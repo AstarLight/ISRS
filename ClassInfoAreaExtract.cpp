@@ -98,7 +98,7 @@ void func(Mat& img,Mat&src)
 		begin = *it;
 	}
 #endif
-	delete h2;
+	delete [] h2;
 }
 
 
@@ -252,6 +252,9 @@ void Class7InfoAreaExtract(Mat& src)
 	//namedWindow(wnd_binary, WINDOW_NORMAL);
 	//imshow(wnd_binary, src_binary);
 	waitKey(0);
+
+	delete [] v;
+	delete [] h;
 }
 
 
@@ -517,4 +520,7 @@ void Class10InfoAreaExtract(Mat& src)
 #endif
 	namedWindow("src2", 0);
 	imshow("src2", src);
+	delete[] v;
+	delete[] h;
 }
+

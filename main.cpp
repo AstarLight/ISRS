@@ -26,7 +26,7 @@ Mat src;
 Mat src_gray;
 #define DETAILED_INFO_AREA_THRESH  100
 
-
+void EdgeLocation(Mat& src2);
 
 void SaveDetailedArea()
 {
@@ -63,13 +63,27 @@ void SaveDetailedArea()
 		//drawContours(drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
 		int rate = boundRect[i].width / boundRect[i].height;
 #if 1
-		if (boundRect[i].area() < 300)
+		if (boundRect[i].area() < 300 )
 		{
 			continue;
 		}
 #endif
-		rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 0, 255), 2, 8, 0);
-		Rect r(boundRect[i].tl(), boundRect[i].br());
+		//rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 0, 255), 2, 8, 0);
+		int x = 0;
+		int y = 0;
+		if (boundRect[i].x > 3)
+		{
+			x = boundRect[i].x - 3;
+		}
+
+		if (boundRect[i].y > 3)
+		{
+			y = boundRect[i].y -3;
+		}
+
+		Rect r(x , y, boundRect[i].width, boundRect[i].height+4);
+		rectangle(drawing, r,Scalar(0, 0, 255), 2, 8, 0);
+		//Rect r(boundRect[i].tl(), boundRect[i].br());
 		Mat tmp = drawing(r);
 		char file[100];
 
@@ -137,6 +151,124 @@ void FinalInfoGenerator()
 	}
 }
 
+void Class2InfoAreaExtract(Mat& src2)
+{
+	Mat img2 = src2(Rect(20, 10, src2.cols - 40, src2.rows - 20)); //修正边缘
+	//Mat img2 = src2;
+	imshow("img2", img2);
+	cvtColor(img2, src, COLOR_RGB2GRAY);
+	imshow("灰度化", src);
+
+	Mat out;
+	boxFilter(src, out, -1, Size(5, 5));//-1指原图深度
+	imshow("方框滤波", out);
+
+	// 局部二值化
+	int blockSize = 25;
+	int constValue = 10;
+	Mat local;
+	adaptiveThreshold(out, local, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY_INV, blockSize, constValue);
+	imshow("二值化", local);
+	imwrite("binary.bmp", local);
+
+
+
+	Mat out3;
+	//获取自定义核
+	Mat element2 = getStructuringElement(MORPH_RECT, Size(5, 5)); //第一个参数MORPH_RECT表示矩形的卷积核，当然还可以选择椭圆形的、交叉型的
+																   //腐蚀操作
+	erode(local, out3, element2);
+	namedWindow("腐蚀操作", WINDOW_NORMAL);
+	imshow("腐蚀操作", out3);
+	imwrite("erode.bmp", out3);
+
+	Mat out2;
+	//获取自定义核
+	
+	Mat element = getStructuringElement(MORPH_RECT, Size(30, 1)); //第一个参数MORPH_RECT表示矩形的卷积核，当然还可以选择椭圆形的、交叉型的
+																 //膨胀操作
+	dilate(out3, out2, element,Point(-1,-1),10); //迭代10次
+	namedWindow("膨胀操作", WINDOW_NORMAL);
+	imshow("膨胀操作", out2);
+	imwrite("dd.jpg", out2);
+
+	Mat img;
+	/// 载入原图像, 返回3通道图像
+	img = imread("dd.jpg", 1);
+
+	/// 转化成灰度图像并进行平滑
+	cvtColor(img, src_gray, CV_BGR2GRAY);
+	blur(src_gray, src_gray, Size(3, 3));
+
+	/// 创建窗口
+	char* source_window = "Source";
+	namedWindow(source_window, CV_WINDOW_AUTOSIZE);
+	imshow(source_window, src);
+
+	SaveDetailedArea();
+}
+
+void EdgeLocation(Mat& src2)
+{
+	//resize(src, src, Size(1160, 817));
+	imwrite("7p.bmp", src2);
+	Mat src_gray, src_binary;
+
+	//转化为灰度图像
+	cvtColor(src2, src_gray, CV_RGB2GRAY);
+	//二值化图像
+	adaptiveThreshold(src_gray, src_binary, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 25, 10);
+	int* v = new int[src2.cols * 4];
+
+	memset(v, 0, src2.cols * 4);
+
+	int i, j;
+	//方法一遍历
+	//垂直方向进行累加（积分）
+	int max_x = 0;
+	int pos_x = 0;
+	int max2_x = 0;
+	int pos2_x = 0;
+	//注意i的步长，设置这样的步长是为了不把一些临近的像素高的点包括进来，否则会造成点重叠
+	//注意i的起点和终点，都+或-了50，这是为了避免发票边缘影响像素检测
+	for (i = 50; i<src_binary.cols - 50; i += 5) //列
+	{
+		for (j = 0; j<src_binary.rows; j++)      //行
+		{
+			if (src_binary.at<uchar>(j, i) == 0)      //统计的是白色像素的数量
+				v[i]++;
+		}
+		cout << "v: " << v[i] << "  pos: " << i << endl;
+		//找出top2的像素位置
+		if (max2_x < v[i])
+		{
+			max2_x = v[i];
+			pos2_x = i;
+			if (max_x < max2_x)
+			{
+				swap(max_x, max2_x);
+				swap(pos_x, pos2_x);
+			}
+		}
+	}
+
+
+	cout << "max x = " << max_x << endl;
+	cout << "max2 x = " << max2_x << endl;
+
+	cout << "pos x = " << pos_x << endl;
+	cout << "pos2 x = " << pos2_x << endl;
+
+	int left_x = MIN(pos_x, pos2_x);
+
+	int right_x = MAX(pos_x, pos2_x);
+
+	src2 = src2(Rect(left_x + 10, 10, right_x - left_x - 26, src2.rows - 20));
+
+	imshow("src2", src2);
+}
+
+
 
 void GetContoursPic(const char* pSrcFileName, const char* pDstFileName)
 {
@@ -203,8 +335,8 @@ void GetContoursPic(const char* pSrcFileName, const char* pDstFileName)
 			cvCopy(pSrcImg, pRoiSrcImg, pFirstFindImg);
 
 			//再显示一下看看，除了感兴趣的区域，其他部分都是黑色的了  
-			//cvNamedWindow("pRoiSrcImg", 1);
-			//cvShowImage("pRoiSrcImg", pRoiSrcImg);
+			cvNamedWindow("pRoiSrcImg", 1);
+			cvShowImage("pRoiSrcImg", pRoiSrcImg);
 
 			//创建一个旋转后的图像  
 			pRatationedImg = cvCreateImage(cvGetSize(pRoiSrcImg), pRoiSrcImg->depth, pRoiSrcImg->nChannels);
@@ -306,6 +438,7 @@ void ResultOutput(int res, Mat& img)
 		break;
 	case 2:
 		cout << "2类发票\n" << endl;
+		Class2InfoAreaExtract(img);
 		break;
 	case 3:
 		cout << "3类发票\n" << endl;
@@ -329,6 +462,8 @@ void ResultOutput(int res, Mat& img)
 		break;
 	case 8:
 		cout << "8类发票\n" << endl;
+		
+		Class2InfoAreaExtract(img);
 		break;
 	case 9:
 		cout << "9类发票\n" << endl;
@@ -341,7 +476,7 @@ void ResultOutput(int res, Mat& img)
 		break;
 	default:
 		cout << "没有找到对应的发票种类！\n" << endl;
-		Class10InfoAreaExtract(img);
+		Class2InfoAreaExtract(img);
 		break;
 	}
 }
