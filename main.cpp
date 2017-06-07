@@ -36,6 +36,7 @@ void SaveDetailedArea()
 
 	/// 使用Threshold检测边缘
 	threshold(src_gray, threshold_output, DETAILED_INFO_AREA_THRESH, 255, THRESH_BINARY);
+
 	/// 找到轮廓
 	findContours(threshold_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 
@@ -68,6 +69,8 @@ void SaveDetailedArea()
 			continue;
 		}
 #endif
+
+
 		//rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 0, 255), 2, 8, 0);
 		int x = 0;
 		int y = 0;
@@ -82,7 +85,8 @@ void SaveDetailedArea()
 		}
 
 		Rect r(x , y, boundRect[i].width, boundRect[i].height+4);
-		rectangle(drawing, r,Scalar(0, 0, 255), 2, 8, 0);
+		rectangle(src, r,Scalar(0, 0, 255), 2, 8, 0);
+		
 		//Rect r(boundRect[i].tl(), boundRect[i].br());
 		Mat tmp = drawing(r);
 		char file[100];
@@ -94,7 +98,7 @@ void SaveDetailedArea()
 
 	/// 显示在一个窗口
 	namedWindow("Contours", CV_WINDOW_AUTOSIZE);
-	imshow("Contours", drawing);
+	imshow("Contours", src);
 }
 
 //对第一次提取出来的区域在进行进一步的提取的
@@ -102,16 +106,16 @@ void DetailedInfoAreaExtract(Mat& src2)
 {
 	cvtColor(src2, src, COLOR_RGB2GRAY);
 	imshow("灰度化", src);
-
+/*
 	Mat out;
 	boxFilter(src, out, -1, Size(5, 5));//-1指原图深度
 	imshow("方框滤波", out);
-
+*/
 	// 局部二值化
 	int blockSize = 25;
 	int constValue = 10;
 	Mat local;
-	adaptiveThreshold(out, local, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY_INV, blockSize, constValue);
+	adaptiveThreshold(src, local, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY_INV, blockSize, constValue);
 	imshow("二值化", local);
 
 	Mat out2;
@@ -136,7 +140,7 @@ void DetailedInfoAreaExtract(Mat& src2)
 	namedWindow(source_window, CV_WINDOW_AUTOSIZE);
 	imshow(source_window, src);
 
-	SaveDetailedArea();
+	//SaveDetailedArea();
 }
 
 void FinalInfoGenerator()
@@ -154,7 +158,7 @@ void FinalInfoGenerator()
 void Class2InfoAreaExtract(Mat& src2)
 {
 	Mat img2 = src2(Rect(20, 10, src2.cols - 40, src2.rows - 20)); //修正边缘
-	//Mat img2 = src2;
+																   //Mat img2 = src2;
 	imshow("img2", img2);
 	cvtColor(img2, src, COLOR_RGB2GRAY);
 	imshow("灰度化", src);
@@ -171,12 +175,10 @@ void Class2InfoAreaExtract(Mat& src2)
 	imshow("二值化", local);
 	imwrite("binary.bmp", local);
 
-
-
 	Mat out3;
 	//获取自定义核
 	Mat element2 = getStructuringElement(MORPH_RECT, Size(5, 5)); //第一个参数MORPH_RECT表示矩形的卷积核，当然还可以选择椭圆形的、交叉型的
-																   //腐蚀操作
+																  //腐蚀操作
 	erode(local, out3, element2);
 	namedWindow("腐蚀操作", WINDOW_NORMAL);
 	imshow("腐蚀操作", out3);
@@ -184,10 +186,10 @@ void Class2InfoAreaExtract(Mat& src2)
 
 	Mat out2;
 	//获取自定义核
-	
+
 	Mat element = getStructuringElement(MORPH_RECT, Size(30, 1)); //第一个参数MORPH_RECT表示矩形的卷积核，当然还可以选择椭圆形的、交叉型的
-																 //膨胀操作
-	dilate(out3, out2, element,Point(-1,-1),10); //迭代10次
+																  //膨胀操作
+	dilate(out3, out2, element, Point(-1, -1), 10); //迭代10次
 	namedWindow("膨胀操作", WINDOW_NORMAL);
 	imshow("膨胀操作", out2);
 	imwrite("dd.jpg", out2);
@@ -204,6 +206,52 @@ void Class2InfoAreaExtract(Mat& src2)
 	char* source_window = "Source";
 	namedWindow(source_window, CV_WINDOW_AUTOSIZE);
 	imshow(source_window, src);
+
+	SaveDetailedArea();
+}
+
+
+
+void Class3InfoAreaExtract(Mat& src2)
+{
+	resize(src2, src2, Size(1160, 817));
+	Mat local;
+
+	//转化为灰度图像
+	cvtColor(src2, src, CV_RGB2GRAY);
+	
+	//二值化图像
+	adaptiveThreshold(src, local, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, 25, 10);
+
+	Mat out;
+	//获取自定义核
+	Mat element = getStructuringElement(MORPH_RECT, Size(3, 3)); //第一个参数MORPH_RECT表示矩形的卷积核，当然还可以选择椭圆形的、交叉型的
+																 //腐蚀操作
+	erode(local, out, element, Point(-1, -1), 2);
+
+	out = out(Rect(20, 20, out.cols - 40, out.rows - 40));
+	src = src(Rect(20, 20, src.cols - 40, src.rows - 40));
+	//src_gray = out;
+	namedWindow("腐蚀操作", WINDOW_NORMAL);
+	imshow("腐蚀操作", out);
+
+	Mat out2;
+	//获取自定义核
+	Mat element2 = getStructuringElement(MORPH_RECT, Size(40, 2)); //第一个参数MORPH_RECT表示矩形的卷积核，当然还可以选择椭圆形的、交叉型的
+																   //膨胀操作
+	dilate(out, out2, element2, Point(-1, -1), 5);
+
+	imshow("out2", out2);
+
+	imwrite("dd.jpg", out2);
+
+	Mat img;
+	/// 载入原图像, 返回3通道图像
+	img = imread("dd.jpg", 1);
+
+	/// 转化成灰度图像并进行平滑
+	cvtColor(img, src_gray, CV_BGR2GRAY);
+	blur(src_gray, src_gray, Size(3, 3));
 
 	SaveDetailedArea();
 }
@@ -450,7 +498,8 @@ void ResultOutput(int res, Mat& img)
 		break;
 	case 5:
 		cout << "广东省通用机打发票\n" << endl;
-		Class7InfoAreaExtract(img);
+		//Class7InfoAreaExtract(img);
+		Class10InfoAreaExtract(img);
 		break;
 	case 6:
 		cout << "6类发票\n" << endl;
@@ -463,7 +512,7 @@ void ResultOutput(int res, Mat& img)
 	case 8:
 		cout << "8类发票\n" << endl;
 		
-		Class2InfoAreaExtract(img);
+		Class3InfoAreaExtract(img);
 		break;
 	case 9:
 		cout << "9类发票\n" << endl;
@@ -472,11 +521,11 @@ void ResultOutput(int res, Mat& img)
 	case 10:
 		cout << "10类发票\n" << endl;
 		Class10InfoAreaExtract(img);
-		FinalInfoGenerator();
+		//FinalInfoGenerator();
 		break;
 	default:
 		cout << "没有找到对应的发票种类！\n" << endl;
-		Class2InfoAreaExtract(img);
+		Class10InfoAreaExtract(img);
 		break;
 	}
 }
@@ -592,7 +641,7 @@ int main()
 			int result = ImageClassify(PreProcImage);
 
 			cout << file << "的类型为：";
-			ResultOutput(result, tmpImage);
+			ResultOutput(result, PreProcImage);
 
 			
 			waitKey();

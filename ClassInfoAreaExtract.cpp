@@ -270,6 +270,7 @@ void Class10InfoAreaExtract(Mat& src)
 	cvtColor(src, src_gray, CV_RGB2GRAY);
 	//二值化图像
 	adaptiveThreshold(src_gray, src_binary, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 25, 10);
+	imshow("erzhihua", src_binary);
 	int* v = new int[src.cols * 4];
 	int* h = new int[src.rows * 4];
 	cout << "src.cols = " << src.cols << endl;
@@ -285,6 +286,8 @@ void Class10InfoAreaExtract(Mat& src)
 	int pos_x = 0;
 	int max2_x = 0;
 	int pos2_x = 0;
+
+#if 0
 	for (i = 10; i < 160; i += 2) //列
 	{
 		for (j = src_binary.rows / 4; j < src_binary.rows /2; j++)      //行
@@ -297,16 +300,23 @@ void Class10InfoAreaExtract(Mat& src)
 		//找出top2的像素位置
 		if (max2_x < v[i])
 		{
+			//我们需要保证最大的两个点的距离要大于5
+			if (i - pos_x <= 5)
+			{
+				continue;
+			}
+
 			max2_x = v[i];
 			pos2_x = i;
 			if (max_x < max2_x)
 			{
 				swap(max_x, max2_x);
 				swap(pos_x, pos2_x);
+	
 			}
 		}
 	}
-
+#endif
 	for (i = src_binary.cols - 10; i > src_binary.cols - 10 - 150; i -= 2) //列
 	{
 		for (j = src_binary.rows / 4; j < src_binary.rows / 2; j++)      //行
@@ -318,12 +328,19 @@ void Class10InfoAreaExtract(Mat& src)
 		//找出top2的像素位置
 		if (max2_x < v[i])
 		{
+			//我们需要保证最大的两个点的距离要大于5
+			if (i - pos_x <= 5)
+			{
+				continue;
+			}
+
 			max2_x = v[i];
 			pos2_x = i;
 			if (max_x < max2_x)
 			{
 				swap(max_x, max2_x);
 				swap(pos_x, pos2_x);
+			
 			}
 			}
 		}
@@ -373,12 +390,18 @@ void Class10InfoAreaExtract(Mat& src)
 		//cout << "h :" << h[i] << "  pos: " << i << endl;
 		if (max2_y < h[i])
 		{
+			//我们需要保证最大的两个点的距离要大于5
+			if (i - pos_y <= 5)
+			{
+				continue;
+			}
 			max2_y = h[i];
 			pos2_y = i;
 			if (max_y < max2_y)
 			{
 				swap(max_y, max2_y);
 				swap(pos_y, pos2_y);
+	
 			}
 		}
 	}
