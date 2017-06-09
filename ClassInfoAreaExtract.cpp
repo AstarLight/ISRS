@@ -285,7 +285,7 @@ void Class10InfoAreaExtract(Mat& src)
 #if 1
 	for (i = 10; i < 160; i += 2) //列
 	{
-		for (j = src_binary.rows / 4; j < src_binary.rows; j++)      //行
+		for (j = src_binary.rows*3 / 8; j < src_binary.rows*6/8; j++)      //行
 		{
 			if (src_binary.at<uchar>(j, i) == 0)      //统计的是黑色像素的数量
 				v[i]++;
@@ -315,7 +315,7 @@ void Class10InfoAreaExtract(Mat& src)
 	//从右边数起，在一定范围内的x坐标的最大值
 	for (i = src_binary.cols - 10; i > src_binary.cols - 5 - 150; i -= 1) //列
 	{
-		for (j = src_binary.rows  / 4; j < src_binary.rows ; j++)      //行
+		for (j = src_binary.rows*3  / 8; j < src_binary.rows*6/8 ; j++)      //行
 		{
 			if (src_binary.at<uchar>(j, i) == 0)      //统计的是黑色像素的数量
 				v[i]++;
@@ -354,7 +354,7 @@ void Class10InfoAreaExtract(Mat& src)
 				h[i]++;
 		}
 
-		cout << "h :" << h[i] << "  pos: " << i << endl;
+		//cout << "h :" << h[i] << "  pos: " << i << endl;
 		if (max2_y < h[i])
 		{
 			//我们需要保证最大的两个点的距离要大于5

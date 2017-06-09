@@ -29,6 +29,112 @@ Mat g_src_gray;
 
 void EdgeLocation(Mat& src2);
 
+//度数转换
+double DegreeTrans(double theta)
+{
+	double res = theta / CV_PI * 180;
+	return res;
+}
+
+
+//逆时针旋转图像degree角度（原尺寸）    
+void rotateImage(Mat src, Mat& img_rotate, double degree)
+{
+	//旋转中心为图像中心    
+	Point2f center;
+	center.x = float(src.cols / 2.0);
+	center.y = float(src.rows / 2.0);
+	int length = 0;
+	length = sqrt(src.cols*src.cols + src.rows*src.rows);
+	//计算二维旋转的仿射变换矩阵  
+	Mat M = getRotationMatrix2D(center, degree, 0.98); //稍微缩小，以便提取边缘
+	warpAffine(src, img_rotate, M, Size(length, length));//仿射变换  
+}
+
+//通过霍夫变换计算角度
+double CalcDegree(Mat srcImage)
+{
+	Mat midImage, dstImage;
+
+	Canny(srcImage, midImage, 50, 200, 3);
+	cvtColor(midImage, dstImage, CV_GRAY2BGR);
+
+	vector<Vec2f> lines;
+
+	HoughLines(midImage, lines, 1, CV_PI / 360, 500, 0, 0);
+	cout << lines.size() << endl;
+
+	if (!lines.size())
+	{
+		HoughLines(midImage, lines, 1, CV_PI / 180, 200, 0, 0);
+	}
+	cout << lines.size() << endl;
+
+	if (!lines.size())
+	{
+		HoughLines(midImage, lines, 1, CV_PI / 180, 150, 0, 0);
+	}
+	cout << lines.size() << endl;
+
+	float sum = 0;
+	int count = 0;
+	//依次画出每条线段
+	for (size_t i = 0; i < lines.size(); i++)
+	{
+		float rho = lines[i][0];
+		float theta = lines[i][1];
+		Point pt1, pt2;
+		cout <<"theta:" << theta << endl;
+		double a = cos(theta), b = sin(theta);
+		double x0 = a*rho, y0 = b*rho;
+		pt1.x = cvRound(x0 + 1000 * (-b));
+		pt1.y = cvRound(y0 + 1000 * (a));
+		pt2.x = cvRound(x0 - 1000 * (-b));
+		pt2.y = cvRound(y0 - 1000 * (a));
+
+		if (theta < 1.2 || theta > 1.8)  //角度太小或者太大，都不要
+		{
+			continue;
+		}
+
+		//只选角度最小的作为旋转角度
+		sum += theta;
+		count++;
+		line(dstImage, pt1, pt2, Scalar(55, 100, 195), 1, LINE_AA); //Scalar函数用于调节线段颜色
+
+		imshow("直线探测效果图", dstImage);
+	}
+
+	float average = sum / count; //对所有角度求平均，这样做旋转效果会更好
+	cout << "average theta:" << average << endl;
+
+	double angle = DegreeTrans(average) - 90;
+
+	if (angle < -45)
+	{
+		angle = 90 + angle;
+	}
+	//cout << "angle: " << angle << endl;
+	rotateImage(dstImage, srcImage, angle);
+	//imshow("直线探测效果图2", dstImage);
+	imwrite("test2.jpg", srcImage);
+	return angle;
+}
+
+
+void ImageRecify(Mat& src, Mat& dst)
+{
+	double degree;
+
+	//倾斜角度矫正
+	degree = CalcDegree(src);
+	rotateImage(src, dst, degree);
+	cout << "angle:" << degree << endl;
+
+	imshow("旋转调整后", dst);
+}
+
+
 void SystemInit()
 {
 	for (int i = 1; i <= g_final_area_count; i++)
@@ -489,6 +595,91 @@ void GetContoursPic(const char* pSrcFileName, const char* pDstFileName)
 	cvReleaseImage(&pSrcImg);
 }
 
+
+void GetContoursPic2(const char* pSrcFileName, const char* pDstFileName)
+{
+	IplImage* pSrcImg = NULL;
+	IplImage* pFirstFindImg = NULL;
+	IplImage* pRoiSrcImg = NULL;
+	IplImage* pRatationedImg = NULL;
+	IplImage* pSecondFindImg = NULL;
+	IplImage* pDstImg = NULL;
+
+	CvSeq* pFirstSeq = NULL;
+	CvSeq* pSecondSeq = NULL;
+
+	CvMemStorage* storage = cvCreateMemStorage(0);
+
+	pSrcImg = cvLoadImage(pSrcFileName, 1);
+	pFirstFindImg = cvCreateImage(cvGetSize(pSrcImg), IPL_DEPTH_8U, 1);
+
+	//检索外围轮廓  
+	cvCvtColor(pSrcImg, pFirstFindImg, CV_BGR2GRAY);  //灰度化  
+	cvThreshold(pFirstFindImg, pFirstFindImg, 100, 200, CV_THRESH_BINARY);  //设置阈值，二值化  
+																			//注意第5个参数为CV_RETR_EXTERNAL，只检索外框  
+	int nCount = cvFindContours(pFirstFindImg, storage, &pFirstSeq, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+
+	//显示看一下  
+	//cvNamedWindow("pSrcImg", 1);
+	//cvShowImage("pSrcImg", pSrcImg);
+
+	for (; pFirstSeq != NULL; pFirstSeq = pFirstSeq->h_next)
+	{
+		if (pFirstSeq->total < 600) //太小的不考虑,这个要考虑图片分辨率大小  
+		{
+			continue;
+		}
+
+		//需要获取的坐标  
+		CvPoint2D32f rectpoint[4];
+		CvBox2D End_Rage2D = cvMinAreaRect2(pFirstSeq); //寻找包围矩形，获取角度  
+
+		cvBoxPoints(End_Rage2D, rectpoint); //获取4个顶点坐标  
+											//与水平线的角度  
+		float angle = End_Rage2D.angle;
+
+		{
+			//角度比较小，本来就是正放着的，所以获取矩形  
+			CvRect rect = cvBoundingRect(pFirstSeq);
+			//把这个矩形区域设置为感兴趣的区域  
+			cvSetImageROI(pSrcImg, rect);
+
+			CvSize dstSize;
+			dstSize.width = rect.width;
+			dstSize.height = rect.height;
+			pDstImg = cvCreateImage(dstSize, pSrcImg->depth, pSrcImg->nChannels);
+			//拷贝过来  
+			cvCopy(pSrcImg, pDstImg, 0);
+			cvResetImageROI(pSrcImg);
+			//保存  
+			cvSaveImage(pDstFileName, pDstImg);
+		}
+	}
+	//显示一下最后的结果  
+	cvNamedWindow("Contour2", 1);
+	cvShowImage("Contour2", pDstImg);
+
+	//cvWaitKey(0);
+
+	//释放所有  
+	cvReleaseMemStorage(&storage);
+	if (pRoiSrcImg)
+	{
+		cvReleaseImage(&pRoiSrcImg);
+	}
+	if (pRatationedImg)
+	{
+		cvReleaseImage(&pRatationedImg);
+	}
+	if (pSecondFindImg)
+	{
+		cvReleaseImage(&pSecondFindImg);
+	}
+	cvReleaseImage(&pDstImg);
+	cvReleaseImage(&pFirstFindImg);
+	cvReleaseImage(&pSrcImg);
+}
+
 void HelpText()
 {
 	cout << "操作说明" << endl;
@@ -668,18 +859,28 @@ int main()
 			//cout << file << "的类型为：";
 			//ResultOutput(result, PreProcImage);
 
-
+			Mat dst;
+			//基于直线探测的角度矫正
+			ImageRecify(PreProcImage, dst);
+			imwrite("dst.jpg", dst);
+		
+			GetContoursPic2("dst.jpg", "dst2.jpg");
 			//需要设计一个发票类型判定函数
+			Mat PreProcImage2 = imread("dst2.jpg");
+			imshow("微调前", PreProcImage2);
+			PreProcImage2 = PreProcImage2(Rect(5, 5, PreProcImage2.cols - 10, PreProcImage2.rows - 10)); //进行区域微调
+			imshow("微调后", PreProcImage2);
+			imshow("再一次轮廓提取", PreProcImage2);
 
 			if (1)  //表格类发票
 			{
 				cout << "表格类发票\n" << endl;
-				Class10InfoAreaExtract(PreProcImage);
+				Class10InfoAreaExtract(PreProcImage2);
 			}
 			else  //非表格类发票
 			{
 				cout << "非表格类发票\n" << endl;
-				Class2InfoAreaExtract(PreProcImage);
+				Class2InfoAreaExtract(PreProcImage2);
 			}
 
 			
