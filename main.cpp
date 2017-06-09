@@ -19,14 +19,34 @@ using namespace std;
 #define UNKNOWN 0
 #define CLASS_THRESHOLD  0.02    //分类时设定的阈值
 
-int g_info_area_count = 0;
+
+//int g_info_area_count = 0;
 int g_final_area_count = 0;
 
-Mat src;
-Mat src_gray;
+Mat g_src;
+Mat g_src_gray;
 #define DETAILED_INFO_AREA_THRESH  100
 
 void EdgeLocation(Mat& src2);
+
+void SystemInit()
+{
+	for (int i = 1; i <= g_final_area_count; i++)
+	{
+		char file[100];
+		memset(file, 0, sizeof(file));
+		sprintf_s(file, "E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\tmp%d.jpg", i);
+		if (remove(file) == 0)
+			printf("Removed %s.\n", file);
+	}
+
+
+	//g_info_area_count = 0;
+	g_final_area_count = 0;
+
+	//system("md E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area");
+
+}
 
 void SaveDetailedArea()
 {
@@ -35,7 +55,7 @@ void SaveDetailedArea()
 	vector<Vec4i> hierarchy;
 
 	/// 使用Threshold检测边缘
-	threshold(src_gray, threshold_output, DETAILED_INFO_AREA_THRESH, 255, THRESH_BINARY);
+	threshold(g_src_gray, threshold_output, DETAILED_INFO_AREA_THRESH, 255, THRESH_BINARY);
 
 	/// 找到轮廓
 	findContours(threshold_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
@@ -56,7 +76,7 @@ void SaveDetailedArea()
 
 	/// 画多边形轮廓 + 包围的矩形框 + 圆形框
 	Mat drawing = Mat::zeros(threshold_output.size(), CV_8UC3);
-	src.copyTo(drawing);
+	g_src.copyTo(drawing);
 	g_final_area_count = 0; //初始化
 	for (int i = 0; i< contours.size(); i++)
 	{
@@ -64,7 +84,7 @@ void SaveDetailedArea()
 		//drawContours(drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
 		int rate = boundRect[i].width / boundRect[i].height;
 #if 1
-		if (boundRect[i].area() < 300 )
+		if (boundRect[i].area() < 300 )  //筛选一些矩形，要面积到达一定大小才选用
 		{
 			continue;
 		}
@@ -85,7 +105,7 @@ void SaveDetailedArea()
 		}
 
 		Rect r(x , y, boundRect[i].width, boundRect[i].height+4);
-		rectangle(src, r,Scalar(0, 0, 255), 2, 8, 0);
+		rectangle(g_src, r,Scalar(0, 0, 255), 2, 8, 0);
 		
 		//Rect r(boundRect[i].tl(), boundRect[i].br());
 		Mat tmp = drawing(r);
@@ -98,14 +118,14 @@ void SaveDetailedArea()
 
 	/// 显示在一个窗口
 	namedWindow("Contours", CV_WINDOW_AUTOSIZE);
-	imshow("Contours", src);
+	imshow("Contours", g_src);
 }
 
 //对第一次提取出来的区域在进行进一步的提取的
 void DetailedInfoAreaExtract(Mat& src2)
 {
-	cvtColor(src2, src, COLOR_RGB2GRAY);
-	imshow("灰度化", src);
+	cvtColor(src2, g_src, COLOR_RGB2GRAY);
+	imshow("灰度化", g_src);
 /*
 	Mat out;
 	boxFilter(src, out, -1, Size(5, 5));//-1指原图深度
@@ -115,7 +135,7 @@ void DetailedInfoAreaExtract(Mat& src2)
 	int blockSize = 25;
 	int constValue = 10;
 	Mat local;
-	adaptiveThreshold(src, local, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY_INV, blockSize, constValue);
+	adaptiveThreshold(g_src, local, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY_INV, blockSize, constValue);
 	imshow("二值化", local);
 
 	Mat out2;
@@ -132,20 +152,20 @@ void DetailedInfoAreaExtract(Mat& src2)
 	img = imread("dd.jpg", 1);
 
 	/// 转化成灰度图像并进行平滑
-	cvtColor(img, src_gray, CV_BGR2GRAY);
-	blur(src_gray, src_gray, Size(3, 3));
+	cvtColor(img, g_src_gray, CV_BGR2GRAY);
+	blur(g_src_gray, g_src_gray, Size(3, 3));
 
 	/// 创建窗口
 	char* source_window = "Source";
 	namedWindow(source_window, CV_WINDOW_AUTOSIZE);
-	imshow(source_window, src);
+	imshow(source_window, g_src);
 
 	//SaveDetailedArea();
 }
 
 void FinalInfoGenerator()
 {
-	for (int i = 1; i <= g_info_area_count; i++)
+	for (int i = 1; i <= g_final_area_count; i++)
 	{
 		char file[20];
 		sprintf_s(file, "info%d.jpg", i);
@@ -160,11 +180,11 @@ void Class2InfoAreaExtract(Mat& src2)
 	Mat img2 = src2(Rect(20, 10, src2.cols - 40, src2.rows - 20)); //修正边缘
 																   //Mat img2 = src2;
 	imshow("img2", img2);
-	cvtColor(img2, src, COLOR_RGB2GRAY);
-	imshow("灰度化", src);
+	cvtColor(img2, g_src, COLOR_RGB2GRAY);
+	imshow("灰度化", g_src);
 
 	Mat out;
-	boxFilter(src, out, -1, Size(5, 5));//-1指原图深度
+	boxFilter(g_src, out, -1, Size(5, 5));//-1指原图深度
 	imshow("方框滤波", out);
 
 	// 局部二值化
@@ -199,13 +219,13 @@ void Class2InfoAreaExtract(Mat& src2)
 	img = imread("dd.jpg", 1);
 
 	/// 转化成灰度图像并进行平滑
-	cvtColor(img, src_gray, CV_BGR2GRAY);
-	blur(src_gray, src_gray, Size(3, 3));
+	cvtColor(img, g_src_gray, CV_BGR2GRAY);
+	blur(g_src_gray, g_src_gray, Size(3, 3));
 
 	/// 创建窗口
 	char* source_window = "Source";
 	namedWindow(source_window, CV_WINDOW_AUTOSIZE);
-	imshow(source_window, src);
+	imshow(source_window, g_src);
 
 	SaveDetailedArea();
 }
@@ -218,10 +238,10 @@ void Class3InfoAreaExtract(Mat& src2)
 	Mat local;
 
 	//转化为灰度图像
-	cvtColor(src2, src, CV_RGB2GRAY);
+	cvtColor(src2, g_src, CV_RGB2GRAY);
 	
 	//二值化图像
-	adaptiveThreshold(src, local, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, 25, 10);
+	adaptiveThreshold(g_src, local, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, 25, 10);
 
 	Mat out;
 	//获取自定义核
@@ -230,7 +250,7 @@ void Class3InfoAreaExtract(Mat& src2)
 	erode(local, out, element, Point(-1, -1), 2);
 
 	out = out(Rect(20, 20, out.cols - 40, out.rows - 40));
-	src = src(Rect(20, 20, src.cols - 40, src.rows - 40));
+	g_src = g_src(Rect(20, 20, g_src.cols - 40, g_src.rows - 40));
 	//src_gray = out;
 	namedWindow("腐蚀操作", WINDOW_NORMAL);
 	imshow("腐蚀操作", out);
@@ -250,8 +270,8 @@ void Class3InfoAreaExtract(Mat& src2)
 	img = imread("dd.jpg", 1);
 
 	/// 转化成灰度图像并进行平滑
-	cvtColor(img, src_gray, CV_BGR2GRAY);
-	blur(src_gray, src_gray, Size(3, 3));
+	cvtColor(img, g_src_gray, CV_BGR2GRAY);
+	blur(g_src_gray, g_src_gray, Size(3, 3));
 
 	SaveDetailedArea();
 }
@@ -507,7 +527,7 @@ void ResultOutput(int res, Mat& img)
 		break;
 	case 7:
 		cout << "7类发票\n" << endl;
-		Class7InfoAreaExtract(img);
+		Class10InfoAreaExtract(img);
 		break;
 	case 8:
 		cout << "8类发票\n" << endl;
@@ -516,7 +536,7 @@ void ResultOutput(int res, Mat& img)
 		break;
 	case 9:
 		cout << "9类发票\n" << endl;
-		Class7InfoAreaExtract(img);
+		Class10InfoAreaExtract(img);
 		break;
 	case 10:
 		cout << "10类发票\n" << endl;
@@ -594,11 +614,16 @@ int ImageClassify(Mat& img)
 }
 
 
+
+//主函数，控制流程
 int main()
 {
 	int choice;
 	while (1)
 	{
+		//每次循环都初始化一次系统
+		SystemInit();
+		//显示
 		HelpText();
 		cout << "\n请输入你要进行的操作：" << endl;
 		cin >> choice;
@@ -633,15 +658,29 @@ int main()
 				return -1;
 			}
 
-			resize(PreProcImage, PreProcImage, Size(1160, 817), 0, 0, CV_INTER_LINEAR); //统一图片规格，600*450
+			resize(PreProcImage, PreProcImage, Size(1160, 817), 0, 0, CV_INTER_LINEAR); //统一图片规格，1160*817
 			 //cvtColor(PreProcImage, PreProcImage, CV_BGR2GRAY);
 			imwrite("resize.jpg", PreProcImage);
 			imshow("预处理后图片", PreProcImage);
 			//发票分类
-			int result = ImageClassify(PreProcImage);
+			//int result = ImageClassify(PreProcImage);
 
-			cout << file << "的类型为：";
-			ResultOutput(result, PreProcImage);
+			//cout << file << "的类型为：";
+			//ResultOutput(result, PreProcImage);
+
+
+			//需要设计一个发票类型判定函数
+
+			if (1)  //表格类发票
+			{
+				cout << "表格类发票\n" << endl;
+				Class10InfoAreaExtract(PreProcImage);
+			}
+			else  //非表格类发票
+			{
+				cout << "非表格类发票\n" << endl;
+				Class2InfoAreaExtract(PreProcImage);
+			}
 
 			
 			waitKey();
@@ -652,6 +691,6 @@ int main()
 		}
 
 	}
-
+	SystemInit();
 	return 0;
 }

@@ -17,12 +17,18 @@ Please send email to lijunshi2015@163.com if you any question.
 using namespace std;
 using namespace cv;
 
-extern int g_info_area_count;
+//extern int g_info_area_count;
+extern int g_final_area_count;
+extern Mat g_src;
+extern Mat g_src_gray;
 
-void func(Mat& img,Mat&src)
+void Class1InfoAreaExtract(Mat& img);
+
+//列分割
+void ColsAreaDivide(Mat& img,Mat&src)
 {
 	int thresh = 0.6 * src.rows;  //归一化阈值
-	cout << "yuzhi:" << thresh << endl;
+	cout << "列分割阈值:" << thresh << endl;
 	int* h2 = new int[img.cols * 4];
 	set<int> x_pos;
 	memset(h2, 0, img.cols * 4);
@@ -33,7 +39,7 @@ void func(Mat& img,Mat&src)
 			if (img.at<uchar>(j, i) == 0)      //统计的是黑色像素的数量
 				h2[i]++;
 		}
-		cout << "h2: " << h2[i] << "  pos: " << i << endl;
+		//cout << "h2: " << h2[i] << "  pos: " << i << endl;
 		if (h2[i] > thresh)
 		{
 			circle(img, Point(i, 10), 5, Scalar(0, 0, 255), -1);
@@ -45,29 +51,19 @@ void func(Mat& img,Mat&src)
 
 	if (!x_pos.size())  //没有竖线，直接返回原图
 	{
-		char file[20];
+		char file[100];
 		memset(file, 0, sizeof(file));
-		sprintf_s(file, "info%d.jpg", ++g_info_area_count);
+		sprintf_s(file, "E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\tmp%d.jpg", ++g_final_area_count);
 		imwrite(file, src);
 		return;
 	}
 
-
+	/*分割每个小区域*/
 #if 1
 	int begin = 0;
 	int count = 0;
 	for (set<int>::iterator it = x_pos.begin(); it != x_pos.end(); it++)
 	{
-		
-/*
-		if (begin == 0)
-		{
-			begin = *it;
-			continue;
-		}
-*/
-
-		//if (count == 2)
 		if(1)
 		{
 			int len = *it - begin;
@@ -78,9 +74,9 @@ void func(Mat& img,Mat&src)
 			count++;
 
 			int height = img.rows;
-			char file[20];
+			char file[100];
 			memset(file, 0, sizeof(file));
-			sprintf_s(file, "info%d.jpg", ++g_info_area_count);
+			sprintf_s(file, "E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\tmp%d.jpg", ++g_final_area_count);
 			imwrite(file,src(Rect(begin+2, 0, len-2, height)));
 			//imwrite("test.jpg", tmp);
 		}
@@ -89,9 +85,9 @@ void func(Mat& img,Mat&src)
 		{
 			int len = src.cols - *it;
 			int height = img.rows;
-			char file[20];
+			char file[100];
 			memset(file, 0, sizeof(file));
-			sprintf_s(file, "info%d.jpg", ++g_info_area_count);
+			sprintf_s(file, "E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\tmp%d.jpg", ++g_final_area_count);
 			imwrite(file, src(Rect(*it, 0, len, height)));
 		}
 		
@@ -100,7 +96,6 @@ void func(Mat& img,Mat&src)
 #endif
 	delete [] h2;
 }
-
 
 
 /*广东省通用机打发票*/
@@ -246,7 +241,7 @@ void Class7InfoAreaExtract(Mat& src)
 	Mat InfoText4 = src(InfoArea4);
 	imwrite("info4.jpg", InfoText4);
 
-	g_info_area_count = 4;
+	g_final_area_count = 4;
 	//显示图像
 	imshow("src2", src);
 	//namedWindow(wnd_binary, WINDOW_NORMAL);
@@ -259,18 +254,17 @@ void Class7InfoAreaExtract(Mat& src)
 
 
 
-/*增值税通用发票*/
+/*表格类发票*/
 void Class10InfoAreaExtract(Mat& src)
 {
 	resize(src, src, Size(1160, 817));
-	imwrite("7p.bmp", src);
 	Mat src_gray, src_binary;
 
 	//转化为灰度图像
 	cvtColor(src, src_gray, CV_RGB2GRAY);
 	//二值化图像
 	adaptiveThreshold(src_gray, src_binary, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 25, 10);
-	imshow("erzhihua", src_binary);
+	imshow("二值化", src_binary);
 	int* v = new int[src.cols * 4];
 	int* h = new int[src.rows * 4];
 	cout << "src.cols = " << src.cols << endl;
@@ -280,17 +274,18 @@ void Class10InfoAreaExtract(Mat& src)
 	int i, j;
 	set<int> x;
 	set<int> y;
-	//方法一遍历
+
 	//垂直方向进行累加（积分）
 	int max_x = 0;
 	int pos_x = 0;
 	int max2_x = 0;
 	int pos2_x = 0;
 
-#if 0
+	//从左边数起，在一定范围内的x坐标的最大值
+#if 1
 	for (i = 10; i < 160; i += 2) //列
 	{
-		for (j = src_binary.rows / 4; j < src_binary.rows /2; j++)      //行
+		for (j = src_binary.rows / 4; j < src_binary.rows; j++)      //行
 		{
 			if (src_binary.at<uchar>(j, i) == 0)      //统计的是黑色像素的数量
 				v[i]++;
@@ -317,9 +312,10 @@ void Class10InfoAreaExtract(Mat& src)
 		}
 	}
 #endif
-	for (i = src_binary.cols - 10; i > src_binary.cols - 10 - 150; i -= 2) //列
+	//从右边数起，在一定范围内的x坐标的最大值
+	for (i = src_binary.cols - 10; i > src_binary.cols - 5 - 150; i -= 1) //列
 	{
-		for (j = src_binary.rows / 4; j < src_binary.rows / 2; j++)      //行
+		for (j = src_binary.rows  / 4; j < src_binary.rows ; j++)      //行
 		{
 			if (src_binary.at<uchar>(j, i) == 0)      //统计的是黑色像素的数量
 				v[i]++;
@@ -345,49 +341,20 @@ void Class10InfoAreaExtract(Mat& src)
 			}
 		}
 
-
-
-
-#if 0
-	//注意i的步长，设置这样的步长是为了不把一些临近的像素高的点包括进来，否则会造成点重叠
-	//注意i的起点和终点，都+或-了50，这是为了避免发票边缘影响像素检测
-	for (i = 20; i<src_binary.cols - 20; i += 2) //列
-	{
-		for (j = src_binary.rows / 4; j<src_binary.rows*3/4; j++)      //行
-		{
-			if (src_binary.at<uchar>(j, i) == 0)      //统计的是黑色像素的数量
-				v[i]++;
-		}
-		cout << "v: " << v[i] << "  pos: " << i << endl;
-
-
-		//找出top2的像素位置
-		if (max2_x < v[i])
-		{
-			max2_x = v[i];
-			pos2_x = i;
-			if (max_x < max2_x)
-			{
-				swap(max_x, max2_x);
-				swap(pos_x, pos2_x);
-			}
-		}
-	}
-#endif
-	//水平方向进行累加（积分）
+	//水平方向进行累加（积分），求超过阈值的每个y坐标
 	int max_y = 0;
 	int pos_y = 0;
 	int max2_y = 0;
 	int pos2_y = 0;
-	for (i = 50; i<src_binary.rows - 50; i += 2) //行
+	for (i = 30; i<src_binary.rows - 30; i += 1) //行
 	{
-		for (j = 0; j<src_binary.cols/4; j++)      //列
+		for (j = src_binary.cols / 4; j<src_binary.cols*3/4; j++)      //列
 		{
 			if (src_binary.at<uchar>(i, j) == 0)   //统计黑色像素的数量
 				h[i]++;
 		}
 
-		//cout << "h :" << h[i] << "  pos: " << i << endl;
+		cout << "h :" << h[i] << "  pos: " << i << endl;
 		if (max2_y < h[i])
 		{
 			//我们需要保证最大的两个点的距离要大于5
@@ -418,7 +385,7 @@ void Class10InfoAreaExtract(Mat& src)
 
 
 
-
+	//求出最外围矩形框的四个角点坐标
 
 	int bottom_y = MAX(pos_y, pos2_y);
 	int left_x = MIN(pos_x, pos2_x);
@@ -427,7 +394,7 @@ void Class10InfoAreaExtract(Mat& src)
 	int length = right_x - left_x;
 
 	Point StartPoint(left_x, head_y); //这是发票的原点
-									  //标出发票的四个关键点
+	//标出发票的四个关键点
 	//circle(src, StartPoint, 5, Scalar(0, 0, 255), -1);
 	//circle(src, Point(pos2_x, pos2_y), 5, Scalar(0, 0, 255), -1);
 	//circle(src, Point(pos_x, pos2_y), 5, Scalar(0, 0, 255), -1);
@@ -435,21 +402,47 @@ void Class10InfoAreaExtract(Mat& src)
 	//circle(src, Point(5, src.rows / 3), 5, Scalar(0, 255, 0), -1);
 	//circle(src, Point(src.cols / 3, 5), 5, Scalar(0, 255, 0), -1);
 
-	
+	int pre = 0;
 	for (i = 0; i < src.rows; i++)
 	{
-		if (h[i] > 120)
+		if (h[i] > 450)
 		{
+			if (i - pre < 5)
+			{
+				continue;
+			}
+
+			cout << "符合要求的点有：" << i <<"大小是："<<h[i]<< endl;
+
 
 			circle(src, Point(pos_x, i), 5, Scalar(0, 0, 255), -1);
 			circle(src, Point(pos2_x, i), 5, Scalar(0, 0, 255), -1);
 			y.insert(i);
+			pre = i;
 		}
 	}
+
+	int YPointCount = y.size();  //符合条件的y点数目
+	cout << "y poin num: " << YPointCount << endl;
+
+	if (YPointCount  == 2)  //只有两个点，执行膨胀信息区域提取算法,否则继续往下执行，表格类分割
+	{
+		cout << "这是一个单一矩形发票！" << endl;
+		//执行膨胀信息区域提取算法
+		int h = bottom_y - head_y;
+		Rect r(left_x +4, head_y+4, length-8,  h-8); //矩形框适当修正，该矩形区域不包括矩形的线边缘
+		Mat ROI = src(r);
+		imshow("ROI", ROI);
+		Class1InfoAreaExtract(ROI); 
+
+		return;
+	}
+
+	/*下面开始将抠出来的每一行进行列分割*/
 #if 1
 	set<int>::iterator iter;
 	int begin = 0;
-	g_info_area_count = 0;
+	g_final_area_count = 0;
 	for (iter = y.begin(); iter != y.end(); iter++)
 	{
 		if (begin == 0)
@@ -484,8 +477,8 @@ void Class10InfoAreaExtract(Mat& src)
 		*/
 		if (1)
 		{
-			func(src_binary(InfoArea1),src(InfoArea1));
-			//InfoText1 = InfoText1(r);
+			//列分割
+			ColsAreaDivide(src_binary(InfoArea1),src(InfoArea1));
 		}
 
 		//imwrite(file, InfoText1);
@@ -493,57 +486,68 @@ void Class10InfoAreaExtract(Mat& src)
 
 	}
 #endif
-#if 0
-	/*这些参数都要根据每一类的发票位置的信息区域来调整*/
-	/*区域一*/
-	int offset_x = 3;
-	int offset_y = 3;
-	int InfoLength = 590;
-	int InfoHeigh = 230;
-
-	Rect InfoArea1(left_x + offset_x, head_y + offset_y, InfoLength, InfoHeigh);
-	rectangle(src, InfoArea1, Scalar(255, 255, 255), 2);
-	Mat InfoText1 = src(InfoArea1);
-	imwrite("info1.jpg", InfoText1);
-
-
-	/*区域二*/
-	int offset2_x = 3;
-	int offset2_y = 8;
-	int InfoLength2 = 417;
-	int InfoHeigh2 = 160;
-
-	Rect InfoArea2(left_x + offset2_x, bottom_y - offset2_y - InfoHeigh2, InfoLength2, InfoHeigh2);
-	rectangle(src, InfoArea2, Scalar(255, 255, 255), 2);
-	Mat InfoText2 = src(InfoArea2);
-	imwrite("info2.jpg", InfoText2);
-
-
-	/*区域三*/
-	int offset3_x = 5;
-	int offset3_y = 20;
-	int InfoLength3 = 274;
-	int InfoHeigh3 = 146;
-
-	Rect InfoArea3(right_x - offset3_x - InfoLength3, bottom_y - offset3_y - InfoHeigh3, InfoLength3, InfoHeigh3);
-	rectangle(src, InfoArea3, Scalar(255, 255, 255), 2);
-	Mat InfoText3 = src(InfoArea3);
-	imwrite("info3.jpg", InfoText3);
-
-	/*区域四*/
-	int offset4_x = 15;
-	int offset4_y = 25;
-	int InfoLength4 = 320;
-	int InfoHeigh4 = 87;
-
-	Rect InfoArea4(right_x - InfoLength4, head_y - offset4_y - InfoHeigh4, InfoLength4 + offset4_x, InfoHeigh4);
-	rectangle(src, InfoArea4, Scalar(255, 255, 255), 2);
-	Mat InfoText4 = src(InfoArea4);
-	imwrite("info4.jpg", InfoText4);
-#endif
 	namedWindow("src2", 0);
 	imshow("src2", src);
 	delete[] v;
 	delete[] h;
+}
+
+extern void SaveDetailedArea();
+//采取腐蚀膨胀的思路抠出矩形区域的信息区
+void Class1InfoAreaExtract(Mat& src)
+{
+
+	cvtColor(src, g_src, COLOR_RGB2GRAY);
+	imshow("灰度化", g_src);
+
+	Mat out;
+	boxFilter(g_src, out, -1, Size(5, 5));//-1指原图深度
+	imshow("方框滤波", out);
+
+
+
+	// 局部二值化
+	int blockSize = 25;
+	int constValue = 10;
+	Mat local;
+	adaptiveThreshold(out, local, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY_INV, blockSize, constValue);
+	imshow("二值化", local);
+	imwrite("binary.bmp", local);
+
+
+	Mat out3;
+	//获取自定义核
+	Mat element2 = getStructuringElement(MORPH_RECT, Size(4, 4)); //第一个参数MORPH_RECT表示矩形的卷积核，当然还可以选择椭圆形的、交叉型的
+																  //腐蚀操作
+	erode(local, out3, element2,Point(-1,-1),1);
+	namedWindow("腐蚀操作", WINDOW_NORMAL);
+	imshow("腐蚀操作", out3);
+	imwrite("erode.bmp", out3);
+
+	Mat out2;
+	//获取自定义核
+
+	Mat element = getStructuringElement(MORPH_RECT, Size(30, 1)); //第一个参数MORPH_RECT表示矩形的卷积核，当然还可以选择椭圆形的、交叉型的
+																  //膨胀操作
+	dilate(out3, out2, element, Point(-1, -1), 10); //迭代10次
+	namedWindow("膨胀操作", WINDOW_NORMAL);
+	imshow("膨胀操作", out2);
+	imwrite("dd.jpg", out2);
+
+	Mat img;
+	/// 载入原图像, 返回3通道图像
+	img = imread("dd.jpg", 1);
+
+	/// 转化成灰度图像并进行平滑
+	cvtColor(img, g_src_gray, CV_BGR2GRAY);
+	blur(g_src_gray, g_src_gray, Size(3, 3));
+	imshow("gray blur2", g_src_gray);
+
+	/// 创建窗口
+	char* source_window = "Source";
+	namedWindow(source_window, CV_WINDOW_AUTOSIZE);
+	imshow(source_window, g_src);
+
+	SaveDetailedArea();
 }
 
