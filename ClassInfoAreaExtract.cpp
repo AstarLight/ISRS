@@ -22,10 +22,41 @@ extern int g_final_area_count;
 extern Mat g_src;
 extern Mat g_src_gray;
 
+int g_height;
+
 void Class1InfoAreaExtract(Mat& img);
 
+
+bool IsFirstKeyArea(Mat& img)
+{
+	//cout << "width:" << img.cols << " height:" << img.rows << endl;
+	if (1)
+	{
+		if ((img.cols < 600 && img.cols > 500) && (img.rows < 150 && img.rows > 100))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool IsSecondArea(Mat& img)
+{
+	cout << "width:" << img.cols << " height:" << img.rows << endl;
+	if (1)
+	{
+		if ((img.cols < 850 && img.cols > 720) && (img.rows < 60 && img.rows > 30))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 //列分割
-void ColsAreaDivide(Mat& img,Mat&src)
+void ColsAreaDivide(Mat& img,Mat&src,int y_pos)
 {
 	int thresh = 0.6 * src.rows;  //归一化阈值
 	cout << "列分割阈值:" << thresh << endl;
@@ -72,25 +103,35 @@ void ColsAreaDivide(Mat& img,Mat&src)
 				continue;
 			}
 			count++;
+		
 
 			int height = img.rows;
-			char file[100];
-			memset(file, 0, sizeof(file));
-			sprintf_s(file, "E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\tmp%d.jpg", ++g_final_area_count);
-			imwrite(file,src(Rect(begin+2, 0, len-2, height)));
-			//imwrite("test.jpg", tmp);
-		}
+			cout << "y pos:" << y_pos <<"g_src:"<< g_height<< endl;
+			if ((IsFirstKeyArea(src(Rect(0, 0, len, height)))  && y_pos < g_height) || (IsSecondArea(src(Rect(0, 0, len, height))) && y_pos > g_height))
+			{
+				char file[100];
+				memset(file, 0, sizeof(file));
+				sprintf_s(file, "E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\tmp%d.jpg", ++g_final_area_count);
+				imwrite(file, src(Rect(begin + 2, 0, len - 2, height)));
+				//imwrite("test.jpg", tmp);
+			}
 
+
+		}
+#if 1
 		if (count == x_pos.size())
 		{
 			int len = src.cols - *it;
 			int height = img.rows;
-			char file[100];
-			memset(file, 0, sizeof(file));
-			sprintf_s(file, "E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\tmp%d.jpg", ++g_final_area_count);
-			imwrite(file, src(Rect(*it, 0, len, height)));
+			if ((IsFirstKeyArea(src(Rect(0, 0, len, height))) && y_pos < g_height) || (IsSecondArea(src(Rect(0, 0, len, height))) && y_pos > g_height))
+			{
+				char file[100];
+				memset(file, 0, sizeof(file));
+				sprintf_s(file, "E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\tmp%d.jpg", ++g_final_area_count);
+				imwrite(file, src(Rect(*it, 0, len, height)));
+			}
 		}
-		
+#endif		
 		begin = *it;
 	}
 #endif
@@ -258,6 +299,7 @@ void Class7InfoAreaExtract(Mat& src)
 void Class10InfoAreaExtract(Mat& src)
 {
 	resize(src, src, Size(1160, 817));
+	g_height = src.rows / 2;
 	Mat src_gray, src_binary;
 
 	//转化为灰度图像
@@ -407,7 +449,7 @@ void Class10InfoAreaExtract(Mat& src)
 	{
 		if (h[i] > 450)
 		{
-			if (i - pre < 5)
+			if (i - pre < 8)
 			{
 				continue;
 			}
@@ -428,12 +470,37 @@ void Class10InfoAreaExtract(Mat& src)
 	if (YPointCount  == 2)  //只有两个点，执行膨胀信息区域提取算法,否则继续往下执行，表格类分割
 	{
 		cout << "这是一个单一矩形发票！" << endl;
+		/*
 		//执行膨胀信息区域提取算法
 		int h = bottom_y - head_y;
 		Rect r(left_x +4, head_y+4, length-8,  h-8); //矩形框适当修正，该矩形区域不包括矩形的线边缘
 		Mat ROI = src(r);
 		imshow("ROI", ROI);
 		Class1InfoAreaExtract(ROI); 
+		*/
+
+		//切割两个关键区域，左上角和右下角
+
+		//左上角“付款方”
+		int h1 = 120;
+		int l1 = 400;
+		Rect r1(left_x + 4, head_y + 4, l1 - 8, h1 - 8); //矩形框适当修正，该矩形区域不包括矩形的线边缘
+		Mat ROI1 = src(r1);
+		imshow("ROI1", ROI1);
+		char file[100];
+		memset(file, 0, sizeof(file));
+		sprintf_s(file, "E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\tmp%d.jpg", ++g_final_area_count);
+		imwrite(file, ROI1);
+
+		//右下角“金额”
+		int h2 = (bottom_y - head_y)/2;
+		int l2 = (right_x - left_x)/2;
+		Rect r2(right_x - l2 + 4, bottom_y - h2+4, l2 - 8, h2 - 8); //矩形框适当修正，该矩形区域不包括矩形的线边缘
+		Mat ROI2 = src(r2);
+		imshow("ROI2", ROI2);
+		memset(file, 0, sizeof(file));
+		sprintf_s(file, "E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\tmp%d.jpg", ++g_final_area_count);
+		imwrite(file, ROI2);
 
 		return;
 	}
@@ -478,7 +545,7 @@ void Class10InfoAreaExtract(Mat& src)
 		if (1)
 		{
 			//列分割
-			ColsAreaDivide(src_binary(InfoArea1),src(InfoArea1));
+			ColsAreaDivide(src_binary(InfoArea1),src(InfoArea1), begin);
 		}
 
 		//imwrite(file, InfoText1);

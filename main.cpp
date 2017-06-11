@@ -17,7 +17,7 @@ using namespace std;
 #define RESULT_IMG_PATH  "result.jpg"
 #define ERROR -1
 #define UNKNOWN 0
-#define CLASS_THRESHOLD  0.02    //分类时设定的阈值
+#define CLASS_THRESHOLD  0.06    //分类时设定的阈值
 
 
 //int g_info_area_count = 0;
@@ -692,51 +692,51 @@ void ResultOutput(int res, Mat& img)
 	switch (res)
 	{
 	case 1:
-		cout << "1类发票\n" << endl;
-		Class10InfoAreaExtract(img);
+		cout << "规范发票\n" << endl;
+		//Class10InfoAreaExtract(img);
 		break;
 	case 2:
-		cout << "2类发票\n" << endl;
-		Class2InfoAreaExtract(img);
+		cout << "火车发票\n" << endl;
+		//Class2InfoAreaExtract(img);
 		break;
 	case 3:
-		cout << "3类发票\n" << endl;
-		Class10InfoAreaExtract(img);
+		cout << "飞机发票\n" << endl;
+		//Class10InfoAreaExtract(img);
 		break;
 	case 4:
-		cout << "4类发票\n" << endl;
-		Class10InfoAreaExtract(img);
+		cout << "航空服务单发票\n" << endl;
+		//Class10InfoAreaExtract(img);
 		break;
 	case 5:
-		cout << "广东省通用机打发票\n" << endl;
+		cout << "火车发票\n" << endl;
 		//Class7InfoAreaExtract(img);
-		Class10InfoAreaExtract(img);
+		//Class10InfoAreaExtract(img);
 		break;
 	case 6:
-		cout << "6类发票\n" << endl;
-		Class10InfoAreaExtract(img);
+		cout << "出租车发票\n" << endl;
+		//Class10InfoAreaExtract(img);
 		break;
 	case 7:
-		cout << "7类发票\n" << endl;
-		Class10InfoAreaExtract(img);
+		cout << "航空服务单发票\n" << endl;
+		//Class10InfoAreaExtract(img);
 		break;
 	case 8:
-		cout << "8类发票\n" << endl;
+		cout << "京东发票\n" << endl;
 		
-		Class3InfoAreaExtract(img);
+		//Class3InfoAreaExtract(img);
 		break;
 	case 9:
-		cout << "9类发票\n" << endl;
-		Class10InfoAreaExtract(img);
+		cout << "当当发票\n" << endl;
+		//Class10InfoAreaExtract(img);
 		break;
 	case 10:
-		cout << "10类发票\n" << endl;
-		Class10InfoAreaExtract(img);
+		cout << "汽车发票\n" << endl;
+		//Class10InfoAreaExtract(img);
 		//FinalInfoGenerator();
 		break;
 	default:
 		cout << "没有找到对应的发票种类！\n" << endl;
-		Class10InfoAreaExtract(img);
+		//Class10InfoAreaExtract(img);
 		break;
 	}
 }
@@ -747,16 +747,14 @@ int ImageClassify(Mat& img)
 	Mat templ, result;
 	//cout << "debug1" << endl;
 	//一共有三类发票
-	for (int i = 1; i <= 10; i++)
+	for (int i = 1; i <= 5; i++)
 	{
 		//cout << "debug2" << endl;
-		//每类发票有两个模板
-		for (int j = 1; j <= 2; j++)
-		{
+		//每类发票有1个模板
 			//cout << "debug3" << endl;
 			char file[100];
 			memset(file, 0, sizeof(file));
-			sprintf_s(file, "E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\template\\%d%d.png", i, j);
+			sprintf_s(file, "E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\template\\%d.png", i);
 			//cout << file << endl;
 			templ = imread(file);
 			if (!templ.data)
@@ -770,7 +768,7 @@ int ImageClassify(Mat& img)
 			result.create(result_cols, result_rows, CV_32FC1);
 
 			matchTemplate(img, templ, result, CV_TM_SQDIFF_NORMED);//CV_TM_SQDIFF_NORMED CV_TM_SQDIFF  
-																   //normalize(result, result, 0, 1, NORM_MINMAX, -1, Mat());
+			//normalize(result, result, 0, 1, NORM_MINMAX, -1, Mat());
 
 			double minVal;
 			double maxVal;
@@ -782,7 +780,6 @@ int ImageClassify(Mat& img)
 			cout <<i<<"类发票"<< "匹配度：" << minVal << endl;
 
 			matchLoc = minLoc;
-
 
 			//char WinName[10];
 			//memset(WinName, 0, sizeof(WinName));
@@ -798,7 +795,6 @@ int ImageClassify(Mat& img)
 
 		}
 
-	}
 
 	return UNKNOWN;
 
@@ -853,11 +849,6 @@ int main()
 			 //cvtColor(PreProcImage, PreProcImage, CV_BGR2GRAY);
 			imwrite("resize.jpg", PreProcImage);
 			imshow("预处理后图片", PreProcImage);
-			//发票分类
-			//int result = ImageClassify(PreProcImage);
-
-			//cout << file << "的类型为：";
-			//ResultOutput(result, PreProcImage);
 
 			Mat dst;
 			//基于直线探测的角度矫正
@@ -871,7 +862,19 @@ int main()
 			PreProcImage2 = PreProcImage2(Rect(5, 5, PreProcImage2.cols - 10, PreProcImage2.rows - 10)); //进行区域微调
 			imshow("微调后", PreProcImage2);
 			imshow("再一次轮廓提取", PreProcImage2);
+	
+			//Mat tmp;
+			//cvtColor(PreProcImage2, tmp, CV_RGB2GRAY);
+			//imwrite("resize2.jpg", tmp);
 
+			//Mat tmp2 = imread("resize2.jpg");
+			//发票分类
+			//int result = ImageClassify(tmp2);
+
+			//cout << file << "的类型为：";
+			//ResultOutput(result, tmp2);
+
+#if 1
 			if (1)  //表格类发票
 			{
 				cout << "表格类发票\n" << endl;
@@ -882,7 +885,7 @@ int main()
 				cout << "非表格类发票\n" << endl;
 				Class2InfoAreaExtract(PreProcImage2);
 			}
-
+#endif
 			
 			waitKey();
 		}
