@@ -618,3 +618,366 @@ void Class1InfoAreaExtract(Mat& src)
 	SaveDetailedArea();
 }
 
+
+
+int matchtemplate1(Mat &img)
+{
+
+	Mat templ, result;
+	templ = imread("s.png");  //使用的是飞机票模板
+	int result_cols = img.cols - templ.cols + 1;
+	int result_rows = img.rows - templ.rows + 1;
+	result.create(result_cols, result_rows, CV_32FC1);
+	matchTemplate(img, templ, result, CV_TM_SQDIFF_NORMED);//CV_TM_SQDIFF_NORMED CV_TM_SQDIFF  
+
+	double minVal;
+	double maxVal;
+	Point minLoc;
+	Point maxLoc;
+	Point matchLoc;
+	//cout << "匹配度：" << minVal << endl;
+	minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, Mat());
+
+	cout << "匹配度：" << minVal << endl;
+
+	matchLoc = minLoc;
+
+	//rectangle(img, matchLoc, Point(matchLoc.x + templ.cols, matchLoc.y + templ.rows), Scalar(0, 255, 0), 2, 8, 0);
+
+
+	//阈值判别，小于0.1才认为匹配成功
+
+	if (minVal < 0.03)
+	{
+		return 1;
+	}
+
+	return 2;
+
+}
+
+Point matchtemplate4(Mat &img)
+{
+
+	Mat templ, result;
+	templ = imread("r.png");  //使用的是飞机票模板
+	int result_cols = img.cols - templ.cols + 1;
+	int result_rows = img.rows - templ.rows + 1;
+	result.create(result_cols, result_rows, CV_32FC1);
+	matchTemplate(img, templ, result, CV_TM_SQDIFF_NORMED);//CV_TM_SQDIFF_NORMED CV_TM_SQDIFF  
+
+	double minVal;
+	double maxVal;
+	Point minLoc;
+	Point maxLoc;
+	Point matchLoc;
+	//cout << "匹配度：" << minVal << endl;
+	minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, Mat());
+
+	cout << "匹配度：" << minVal << endl;
+
+	matchLoc = minLoc;
+
+	rectangle(img, matchLoc, Point(matchLoc.x + templ.cols, matchLoc.y + templ.rows), Scalar(0, 255, 0), 2, 8, 0);
+
+	imshow("ha", img);
+	//阈值判别，小于0.1才认为匹配成功
+
+	return matchLoc;
+
+
+
+}
+
+/*****************************************每类发票对应的关键信息区域的提取函数********************************************************************/
+
+//火车票类
+void Class2InfoExtract(Mat& img)
+{
+	/*以下参数根据每一类的发票特点进行定制*/
+	int x = 10;
+	int y = 250;
+	int height = 210;
+	int length = 450;
+
+	Rect r = Rect(x, y, length, height);
+
+	Mat info = img(r);
+	imwrite("E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\1.jpg",info);
+
+	g_final_area_count++;
+
+	rectangle(img, r, Scalar(0, 255, 0), 2, 8, 0);
+	imshow("区域定位", img);
+
+}
+
+
+/*飞机类发票*/
+void Class1InfoExtract(Mat& src)
+{
+	resize(src, src, Size(1160, 817));
+	g_height = src.rows / 2;
+	Mat src_gray, src_binary;
+
+	//转化为灰度图像
+	cvtColor(src, src_gray, CV_RGB2GRAY);
+	//二值化图像
+	adaptiveThreshold(src_gray, src_binary, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 25, 10);
+	imshow("二值化", src_binary);
+	int* v = new int[src.cols * 4];
+	int* h = new int[src.rows * 4];
+	cout << "src.cols = " << src.cols << endl;
+	cout << "src.rows = " << src.rows << endl;
+	memset(v, 0, src.cols * 4);
+	memset(h, 0, src.rows * 4);
+	int i, j;
+	set<int> x;
+	set<int> y;
+
+	//垂直方向进行累加（积分）
+	int max_x = 0;
+	int pos_x = 0;
+	int max2_x = 0;
+	int pos2_x = 0;
+
+	//从左边数起，在一定范围内的x坐标的最大值
+#if 1
+	for (i = 10; i < 160; i += 2) //列
+	{
+		for (j = src_binary.rows * 3 / 8; j < src_binary.rows * 6 / 8; j++)      //行
+		{
+			if (src_binary.at<uchar>(j, i) == 0)      //统计的是黑色像素的数量
+				v[i]++;
+		}
+		//cout << "v: " << v[i] << "  pos: " << i << endl;
+
+		//找出top2的像素位置
+		if (max2_x < v[i])
+		{
+			//我们需要保证最大的两个点的距离要大于5
+			if (i - pos_x <= 5)
+			{
+				continue;
+			}
+
+			max2_x = v[i];
+			pos2_x = i;
+			if (max_x < max2_x)
+			{
+				swap(max_x, max2_x);
+				swap(pos_x, pos2_x);
+
+			}
+		}
+	}
+#endif
+	//从右边数起，在一定范围内的x坐标的最大值
+	for (i = src_binary.cols - 10; i > src_binary.cols - 5 - 150; i -= 1) //列
+	{
+		for (j = src_binary.rows * 3 / 8; j < src_binary.rows * 6 / 8; j++)      //行
+		{
+			if (src_binary.at<uchar>(j, i) == 0)      //统计的是黑色像素的数量
+				v[i]++;
+		}
+		//cout << "v: " << v[i] << "  pos: " << i << endl;
+		//找出top2的像素位置
+		if (max2_x < v[i])
+		{
+			//我们需要保证最大的两个点的距离要大于5
+			if (i - pos_x <= 5)
+			{
+				continue;
+			}
+
+			max2_x = v[i];
+			pos2_x = i;
+			if (max_x < max2_x)
+			{
+				swap(max_x, max2_x);
+				swap(pos_x, pos2_x);
+
+			}
+		}
+	}
+
+	//水平方向进行累加（积分），求超过阈值的每个y坐标
+	int max_y = 0;
+	int pos_y = 0;
+	int max2_y = 0;
+	int pos2_y = 0;
+	for (i = 30; i < src_binary.rows - 30; i += 1) //行
+	{
+		for (j = src_binary.cols / 4; j < src_binary.cols * 3 / 4; j++)      //列
+		{
+			if (src_binary.at<uchar>(i, j) == 0)   //统计黑色像素的数量
+				h[i]++;
+		}
+
+		//cout << "h :" << h[i] << "  pos: " << i << endl;
+		if (max2_y < h[i])
+		{
+			//我们需要保证最大的两个点的距离要大于5
+			if (i - pos_y <= 5)
+			{
+				continue;
+			}
+			max2_y = h[i];
+			pos2_y = i;
+			if (max_y < max2_y)
+			{
+				swap(max_y, max2_y);
+				swap(pos_y, pos2_y);
+
+			}
+		}
+	}
+
+	int pre = 0;
+	for (i = 0; i < src.rows; i++)
+	{
+		if (h[i] > 450)
+		{
+			if (i - pre < 8)
+			{
+				continue;
+			}
+
+			cout << "符合要求的点有：" << i << "大小是：" << h[i] << endl;
+
+
+			//circle(src, Point(pos_x, i), 5, Scalar(0, 0, 255), -1);
+			//circle(src, Point(pos2_x, i), 5, Scalar(0, 0, 255), -1);
+			y.insert(i);
+			pre = i;
+		}
+	}
+
+
+	set<int>::iterator it = y.begin();
+	int begin = *it;
+	set<int>::reverse_iterator  it2 = y.rbegin();
+	int end = *it2;
+
+	//求出最外围矩形框的四个角点坐标
+
+	int bottom_y = end;
+	int left_x = MIN(pos_x, pos2_x);
+	int head_y = begin;
+	int right_x = MAX(pos_x, pos2_x);
+
+
+	//circle(src, Point(left_x, bottom_y), 5, Scalar(0, 0, 255), -1);
+	//circle(src, Point(left_x, head_y), 5, Scalar(0, 0, 255), -1);
+	//circle(src, Point(right_x, bottom_y), 5, Scalar(0, 0, 255), -1);
+	//circle(src, Point(right_x, head_y), 5, Scalar(0, 255, 0), -1);
+
+	//namedWindow("hi", 0);
+	//imshow("hi", src);
+
+
+	//细分航空类发票，使用模板匹配
+	int match = matchtemplate1(src);
+
+	cout << "match result" << match << endl;
+
+		int y_pos;
+		int x_pos;
+		int InfoLength;
+		int InfoHeigh;
+
+
+		if (match == 1)//飞机票
+		{
+
+			//关键区域1切割，金额
+			x_pos = right_x - 230;
+			y_pos = bottom_y - 204;
+			InfoLength = 230;
+			InfoHeigh = 66;
+
+			Rect InfoArea1(x_pos, y_pos, InfoLength, InfoHeigh);
+			//rectangle(src, InfoArea1, Scalar(255, 255, 255), 2);
+			Mat InfoText1 = src(InfoArea1);
+			imwrite("E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\1.jpg", InfoText1);
+			g_final_area_count++;
+
+			//关键区域2切割,姓名
+			x_pos = left_x;
+			y_pos = head_y;
+			InfoLength = 251;
+			InfoHeigh = 86;
+
+			Rect InfoArea2(x_pos, y_pos, InfoLength, InfoHeigh);
+			//rectangle(src, InfoArea1, Scalar(255, 255, 255), 2);
+			Mat InfoText2 = src(InfoArea2);
+			imwrite("E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\2.jpg", InfoText2);
+			g_final_area_count++;
+			
+		}
+		else  //保险类
+		{
+			//关键区域1切割，金额
+			x_pos = right_x - 500;
+			y_pos = head_y + 210;
+			InfoLength = 500;
+			InfoHeigh = 60;
+
+			cout << "x:" << x_pos << "y:" << y_pos << endl;
+
+			Rect InfoArea1(x_pos, y_pos, InfoLength, InfoHeigh);
+			//rectangle(src, InfoArea1, Scalar(255, 255, 255), 2);
+			Mat InfoText1 = src(InfoArea1);
+			imwrite("E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\1.jpg", InfoText1);
+			g_final_area_count++;
+
+			//关键区域2切割,姓名
+			x_pos = left_x;
+			y_pos = head_y;
+			InfoLength = 377;
+			InfoHeigh = 66;
+
+			Rect InfoArea2(x_pos, y_pos, InfoLength, InfoHeigh);
+			//rectangle(src, InfoArea1, Scalar(255, 255, 255), 2);
+			Mat InfoText2 = src(InfoArea2);
+			imwrite("E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\2.jpg", InfoText2);
+			g_final_area_count++;
+		}
+
+	delete[] v;
+	delete[] h;
+}
+
+//当当京东类发票
+void Class4InfoExtract(Mat& img)
+{
+	resize(img, img, Size(605, 1431));
+	Point p = matchtemplate4(img);
+
+	//客户名称信息区域
+	int x, y;
+	x = 5;
+	y = p.y + 113;
+	int h = 40;
+	int l = 260;
+
+	Rect InfoArea1(x, y, l, h);
+	//rectangle(src, InfoArea1, Scalar(255, 255, 255), 2);
+	Mat InfoText1 = img(InfoArea1);
+	imwrite("E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\1.jpg", InfoText1);
+	g_final_area_count++;
+
+	//金额信息区域
+	x = 5;
+	y = img.rows - 143;
+	h = 46;
+	l = 260;
+
+	Rect InfoArea2(x, y, l, h);
+	//rectangle(src, InfoArea1, Scalar(255, 255, 255), 2);
+	Mat InfoText2 = img(InfoArea2);
+	imwrite("E:\\coding\\vs 2015 test\\SmartSystem\\SmartSystem\\final_info_area\\2.jpg", InfoText2);
+	g_final_area_count++;
+
+
+}

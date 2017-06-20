@@ -9,6 +9,7 @@ Please send email to lijunshi2015@163.com if you any question.
 #include "opencv2/highgui.hpp"
 #include <iostream>
 #include "ClassInfoAreaExtract.h"
+#include "Classify.h"
 #include <set>
 
 using namespace cv;
@@ -280,6 +281,8 @@ void FinalInfoGenerator()
 		DetailedInfoAreaExtract(tmpImg);
 	}
 }
+
+
 
 void Class2InfoAreaExtract(Mat& src2)
 {
@@ -692,47 +695,23 @@ void ResultOutput(int res, Mat& img)
 	switch (res)
 	{
 	case 1:
-		cout << "规范发票\n" << endl;
+		cout << "飞机票\n" << endl;
 		//Class10InfoAreaExtract(img);
+		Class1InfoExtract(img);
 		break;
 	case 2:
-		cout << "火车发票\n" << endl;
+		cout << "火车票\n" << endl;
 		//Class2InfoAreaExtract(img);
+		Class2InfoExtract(img);
 		break;
 	case 3:
-		cout << "飞机发票\n" << endl;
-		//Class10InfoAreaExtract(img);
+		cout << "增值发票\n" << endl;
+		Class10InfoAreaExtract(img);
 		break;
 	case 4:
-		cout << "航空服务单发票\n" << endl;
+		cout << "当当京东购物票\n" << endl;
 		//Class10InfoAreaExtract(img);
-		break;
-	case 5:
-		cout << "火车发票\n" << endl;
-		//Class7InfoAreaExtract(img);
-		//Class10InfoAreaExtract(img);
-		break;
-	case 6:
-		cout << "出租车发票\n" << endl;
-		//Class10InfoAreaExtract(img);
-		break;
-	case 7:
-		cout << "航空服务单发票\n" << endl;
-		//Class10InfoAreaExtract(img);
-		break;
-	case 8:
-		cout << "京东发票\n" << endl;
-		
-		//Class3InfoAreaExtract(img);
-		break;
-	case 9:
-		cout << "当当发票\n" << endl;
-		//Class10InfoAreaExtract(img);
-		break;
-	case 10:
-		cout << "汽车发票\n" << endl;
-		//Class10InfoAreaExtract(img);
-		//FinalInfoGenerator();
+		Class4InfoExtract(img);
 		break;
 	default:
 		cout << "没有找到对应的发票种类！\n" << endl;
@@ -806,6 +785,7 @@ int ImageClassify(Mat& img)
 int main()
 {
 	int choice;
+	SVM_Init();
 	while (1)
 	{
 		//每次循环都初始化一次系统
@@ -845,10 +825,11 @@ int main()
 				return -1;
 			}
 
+
 			resize(PreProcImage, PreProcImage, Size(1160, 817), 0, 0, CV_INTER_LINEAR); //统一图片规格，1160*817
 			 //cvtColor(PreProcImage, PreProcImage, CV_BGR2GRAY);
 			imwrite("resize.jpg", PreProcImage);
-			imshow("预处理后图片", PreProcImage);
+			//imshow("预处理后图片", PreProcImage);
 
 			Mat dst;
 			//基于直线探测的角度矫正
@@ -858,10 +839,10 @@ int main()
 			GetContoursPic2("dst.jpg", "dst2.jpg");
 			//需要设计一个发票类型判定函数
 			Mat PreProcImage2 = imread("dst2.jpg");
-			imshow("微调前", PreProcImage2);
+			//imshow("微调前", PreProcImage2);
 			PreProcImage2 = PreProcImage2(Rect(5, 5, PreProcImage2.cols - 10, PreProcImage2.rows - 10)); //进行区域微调
 			imshow("微调后", PreProcImage2);
-			imshow("再一次轮廓提取", PreProcImage2);
+			//imshow("再一次轮廓提取", PreProcImage2);
 	
 			//Mat tmp;
 			//cvtColor(PreProcImage2, tmp, CV_RGB2GRAY);
@@ -874,7 +855,22 @@ int main()
 			//cout << file << "的类型为：";
 			//ResultOutput(result, tmp2);
 
-#if 1
+			//发票分类
+			int result = InvoiceClassify(tmpImage);
+			if (result == 4) //如果是京东当当发票
+			{
+				ResultOutput(result, tmpImage);
+			}
+			else
+			{
+				ResultOutput(result, PreProcImage2);
+			}
+
+
+			
+
+
+#if 0
 			if (1)  //表格类发票
 			{
 				cout << "表格类发票\n" << endl;
@@ -898,3 +894,4 @@ int main()
 	SystemInit();
 	return 0;
 }
+
